@@ -38,7 +38,7 @@ def estimate(
     sigma2, cov, se = variance(transform, SSR, x, T)
     t_values = b_hat/se
 
-    cov_robust, se_robust = variance_robust(SSR, x)
+    cov_robust, se_robust = variance_robust(residual, x)
     t_values_robust = b_hat/se_robust
 
     names = ['b_hat', 'se', 'se_robust', 'sigma2', 't_values', 't_values_robust', 'R2', 'cov', 'cov_robust']
@@ -116,7 +116,7 @@ import numpy as np
 import numpy.linalg as la
 
 def variance_robust(
-        SSR: float,
+        resid: np.array,
         x: np.ndarray,
     ) -> tuple:
     """
@@ -130,11 +130,12 @@ def variance_robust(
     Returns:
         tuple: Returns the robust covariance matrix and robust standard errors.
     """
+    omega = resid**2
+    white_rob = la.inv(x.T@x)@x.T@(omega*x@la.inv(x.T@x))
+    #cov_robust = la.inv(x.T@x)@(SSR*x.T@x)@la.inv(x.T@x)
+    se_robust = np.sqrt(white_rob.diagonal()).reshape(-1, 1)
 
-    cov_robust = la.inv(x.T@x)@(SSR*x.T@x)@la.inv(x.T@x)
-    se_robust = np.sqrt(cov_robust.diagonal()).reshape(-1, 1)
-
-    return cov_robust, se_robust
+    return white_rob, se_robust
 
 
 def print_table(
