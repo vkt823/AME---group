@@ -1,7 +1,7 @@
 import numpy as np
 from numpy import linalg as la
 from tabulate import tabulate
-
+from scipy.stats import chi2
 
 def estimate( 
         y: np.ndarray, x: np.ndarray, transform='', T:int=None
@@ -38,7 +38,7 @@ def estimate(
     sigma2, cov, se = variance(transform, SSR, x, T)
     t_values = b_hat/se
 
-    cov_robust, se_robust = variance_robust(residual, x)
+    cov_robust, se_robust = variance_robust(residual, x, T)
     t_values_robust = b_hat/se_robust
 
     names = ['b_hat', 'se', 'se_robust', 'sigma2', 't_values', 't_values_robust', 'R2', 'cov', 'cov_robust']
@@ -118,6 +118,7 @@ import numpy.linalg as la
 def variance_robust(
         resid: np.array,
         x: np.ndarray,
+        T: int,
     ) -> tuple:
     """
     Calculates the variance-covariance matrix and standard errors of the OLS estimator
@@ -130,12 +131,42 @@ def variance_robust(
     Returns:
         tuple: Returns the robust covariance matrix and robust standard errors.
     """
-    omega = resid**2
-    white_rob = la.inv(x.T@x)@x.T@(omega*x@la.inv(x.T@x))
-    #cov_robust = la.inv(x.T@x)@(SSR*x.T@x)@la.inv(x.T@x)
-    se_robust = np.sqrt(white_rob.diagonal()).reshape(-1, 1)
+    N = int(x.shape[0]/T)
+    K = x.shape[1]
+    Z = np.empty((N, K, K))
+    for i in range(N): 
+        ii_A = slice(i*T, (i+1)*T)
+        Z[i, :] = x[ii_A, :].T @ resid[ii_A, :] @ resid[ii_A, :].T @ x[ii_A, :]
 
-    return white_rob, se_robust
+    bread = np.empty((K,K))
+
+    for i in range(K):
+        for j in range(K):
+            bread[i, j] = np.sum(Z[:, i, j])
+
+
+    omega = resid**2
+    #white_rob = la.inv(x.T@x)@x.T@(omega*x@la.inv(x.T@x))
+    #cov_robust = la.inv(x.T@x)@(SSR*x.T@x)@la.inv(x.T@x)
+    #se_robust = np.sqrt(white_rob.diagonal()).reshape(-1, 1)
+
+    cov_robust = la.inv(x.T@x)@bread@la.inv(x.T@x)
+    se_robust = np.sqrt(cov_robust.diagonal()).reshape(-1, 1)
+
+    return cov_robust, se_robust
+
+def wald_test(beta: np.array,
+              R: np.array,
+              r: np.array,
+              vcov: np.ndarray,
+              ) -> tuple:
+        
+    
+     Wald = (R@beta-r).T@(la.inv(R@vcov@R.T))@(R@beta-r)
+     Q = r.shape[0]
+     p_val = 1-chi2.cdf(Wald, Q)
+     
+     return p_val, Wald
 
 
 def print_table(
@@ -221,6 +252,24 @@ def perm( Q_T: np.ndarray, A: np.ndarray) -> np.ndarray:
 
     return Z
 
+def lag(T):
+    I = np.identity(T) # Identity matrix
+    low_triangular = np.tril(np.ones(T)) # Tx1 vector
+    L_T = I - la.inv(low_triangular)
+    return L_T[1:T]
+
+
+def lead(T):
+    I = np.identity(T) # Identity matrix
+    upper_triangular = np.triu(np.ones(T)) # Tx1 vector
+    L_T = I - la.inv(upper_triangular)
+    return L_T[0:T-1,]
+
+def demeaning_matrix(T):
+    I = np.identity(T) # Identity matrix
+    J = np.ones(T).reshape(-1,1) # Tx1 vector
+    Q_T = I - J@la.inv(J.T@J)@J.T # p. 303
+    return Q_T
 
 def load_example_data():
     # First, import the data into numpy.
