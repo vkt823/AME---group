@@ -169,6 +169,51 @@ def wald_test(beta: np.array,
      return p_val, Wald
 
 
+def wald_test2(y, X, trans='', T=None, significance_level=0.05):
+    """
+    Perform a Wald test to assess the significance of coefficients in a regression model.
+
+    Args:
+        y (np.ndarray): Dependent variable.
+        X (np.ndarray): Independent variable(s).
+        trans (str, optional): Data transformation type.
+        T (int, optional): Number of time periods in panel data.
+        significance_level (float, optional): Significance level (default: 0.05).
+
+    Returns:
+        tuple: Wald statistic, p-value, and test result.
+    """
+    results_dict = estimate(y, X, transform = trans, T=T)
+    b_hat = results_dict['b_hat']
+    cov_robust = results_dict["cov_robust"]
+
+    if trans.lower() in ('', 're', 'be'):
+        linear_combination = np.array([0, 1, 1])
+    elif trans.lower() in ('fd', 'fe'):
+        linear_combination = np.array([1, 1])
+
+    R = linear_combination.reshape(1, -1) # matrix specifying the constraint: beta1 + beta2
+    r = np.array([1])       # beta1 + beta2 = 1
+    
+
+    wald_statistic = ((R @ b_hat - r).T @ np.linalg.inv(R @ cov_robust @ R.T) @ (R @ b_hat - r))[0, 0]
+
+    # calculate critical value
+    degrees_of_freedom = R.shape[0]
+    critical_value = chi2.ppf(1 - significance_level, degrees_of_freedom)
+    
+    # calculate p-value
+    p_value = 1 - chi2.cdf(wald_statistic, degrees_of_freedom)
+    
+    if wald_statistic > critical_value:
+        result = "Reject the null hypothesis"
+    else:
+        result = "Fail to reject the null hypothesis"
+    
+    return wald_statistic, p_value, result
+
+
+
 def print_table(
         labels: tuple,
         results: dict,
