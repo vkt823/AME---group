@@ -38,7 +38,7 @@ def loglikelihood(theta, y, x):
     Args. 
         theta: (K,) vector of parameters 
         x: (N,J,K) matrix of covariates 
-        y: (N,) vector of outcomes (integers in 0, 1, ..., J)
+        y: (N,J) vector of outcomes (shares)
     
     Returns
         ll_i: (N,) vector of loglikelihood contributions
@@ -47,17 +47,19 @@ def loglikelihood(theta, y, x):
     N,J,K = x.shape 
 
     # deterministic utility 
-    v = util(theta, x)
+    # v = util(theta, x)
 
     # denominator 
-    denom = np.exp(v).sum(axis=1) # NOT keepdims! (N,)
+    # denom = np.exp(v).sum(axis=1) # NOT keepdims! (N,)
 
     # utility at chosen alternative 
-    v_i = v[np.arange(N), y]
+    # v_i = v[np.arange(N), y]
+    ccp = choice_prob(theta, x)
 
+    #np.sum(y, axis = 1)*np.log(ccp)
     # likelihood 
-    ll_i = v_i - np.log(denom) # difference between two 1-dimensional arrays 
-
+    temp = np.multiply(y, np.log(ccp))
+    ll_i =   np.sum(temp, axis = 1) #
     return ll_i 
 
 def choice_prob(theta, x):
