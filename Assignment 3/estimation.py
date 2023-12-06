@@ -42,7 +42,7 @@ def estimate(
 
     # call optimizer
     result = optimize.minimize(Q, theta0, options=options, **kwargs)
-    log_like = np.sum(q(theta0, y, x))
+    log_like = -np.sum(q(theta0, y, x))
     cov, se = variance(q, y, x, result, cov_type)   
 
     # collect output in a dict 
