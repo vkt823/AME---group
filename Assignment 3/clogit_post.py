@@ -78,8 +78,8 @@ def choice_prob(theta, x):
     N, J, K = x.shape
     
     # deterministic utility 
-    v = util(theta, x)
-    
+    v = util(theta, x).astype(np.float64)
+
     # denominator 
     denom = np.exp(v).sum(axis=1, keepdims=True) # (N,1)
     
